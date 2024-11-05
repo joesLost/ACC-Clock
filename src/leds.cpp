@@ -34,6 +34,10 @@ void setLEDIntensity(int intensity) {
 }
 
 void LEDTest() {
+  Serial.println("Starting LED test");
+
+  Serial.println("Quick GRB flash");
+
   // Flash RGB quickly
   for (int i = 0; i < 3; i++) {
     setLEDColor(255, 0, 0); // Red
@@ -45,11 +49,14 @@ void LEDTest() {
     setLEDColor(0, 0, 255); // Blue
     delay(300);
   }
+  Serial.println("Max ehite 5s");
 
   // All LEDs on max brightness for 5 seconds
   setLEDColor(255, 255, 255); // White
   setLEDIntensity(255);
   delay(5000);
+
+  Serial.println("RGB cycle 2s each");
 
   // Cycle through RGB at 2 seconds each
   setLEDColor(255, 0, 0); // Red
@@ -61,6 +68,7 @@ void LEDTest() {
   setLEDColor(0, 0, 255); // Blue
   delay(2000);
 
+  Serial.println("Rainbow effect 5s");
   // Rainbow effect for 5 seconds
   unsigned long start = millis();
   while (millis() - start < 5000) {
