@@ -1,12 +1,16 @@
 #include "motors.h"
 #include "globals.h" 
+#include "esp_task_wdt.h"
+
+volatile int CURRENT_HR_STEPS = HR_STEPS_PER_REV / 2; // Initial position is 6 o'clock
+volatile int CURRENT_MIN_STEPS = MIN_STEPS_PER_REV / 2; // Initial position is 30 minutes
 
 
 void motorControlTask(void *pvParameters) {
   MotorCommand cmd;
   bool isSpinning = false;
   bool spinDirection = true; // Default spin direction
-  int spinSpeed = 0;         // Default speed
+  int spinSpeed = 3;         // Default speed
 
   while (true) {
     // Check if there is a new command in the queue
@@ -27,24 +31,32 @@ void motorControlTask(void *pvParameters) {
           break;
         case SET_TIME:
           isSpinning = false;
-          setTime(cmd.hour, cmd.minute);
+          setTime(cmd.hour, cmd.minute, cmd.speed);
           break;
       }
     }
     // If we are in spinning mode, keep the motor running
     if (isSpinning) {
+      //Serial.print("Spinning...");
+      //Serial.print("Speed: ");
+      //Serial.print(spinSpeed);
+      //Serial.print(" Direction: ");
+      //Serial.println(spinDirection ? "Forward" : "Backward");
       spinContinuous(spinSpeed, spinDirection);
+      
     }
     // Add a small delay to yield CPU time to other tasks
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    //vTaskDelay(1 / portTICK_PERIOD_MS);
+    taskYIELD();
+    //esp_task_wdt_reset();
   }
 }
 
 
 void pulseMotor(int pulPin, int speedMultiplier) {
-  int delayTime = max(1000 / speedMultiplier, 10);
+  int delayTime = max(1000 / speedMultiplier, 10); //10 is min pulse delay creating the highest speed
   digitalWrite(pulPin, HIGH);
-  delayMicroseconds(20);
+  delayMicroseconds(5);
   digitalWrite(pulPin, LOW);
   delayMicroseconds(delayTime);
 }
@@ -75,19 +87,38 @@ void spinMotor(bool isMinuteMotor, bool clockwise, int steps, int speedMultiplie
 }
 
 void spinContinuous(int speed, bool clockwise) {
+  
+    digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
 
-  digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
+  const int pulseBatchSize = 1000; // Number of pulses to generate before yielding
+  const int rampUpSteps = pulseBatchSize / 15;
+  const int rampDownSteps = pulseBatchSize / 15;
 
-  pulseMotor(PUL_PIN_MIN, speed);
-  pulseMotor(PUL_PIN_HR, speed);
+  int currentSpeed = 1; // Start at lowest speed
 
-  // Update the current position
-  if (clockwise) {
-    CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS + 1) % MIN_STEPS_PER_REV;
-    CURRENT_HR_STEPS = (CURRENT_HR_STEPS + 1) % HR_STEPS_PER_REV;
-  } else {
-    CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS - 1 + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
-    CURRENT_HR_STEPS = (CURRENT_HR_STEPS - 1 + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
+  for (int step = 0; step < pulseBatchSize; ++step) {
+
+    // Handle ramp up, constant speed, and ramp down
+    if (step < rampUpSteps) {
+      currentSpeed = map(step, 0, rampUpSteps, 1, maxSpeed);
+    } else if (step > pulseBatchSize - rampDownSteps) {
+      currentSpeed = map(step, pulseBatchSize - rampDownSteps, pulseBatchSize, maxSpeed, 1);
+    } else {
+      currentSpeed = maxSpeed;
+    }
+
+    // Pulse the motors at the calculated speed
+    pulseMotor(PUL_PIN_MIN, currentSpeed);
+    pulseMotor(PUL_PIN_HR, currentSpeed);
+
+    // Update the current position for each pulse
+    if (clockwise) {
+      CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS + 1) % MIN_STEPS_PER_REV;
+      CURRENT_HR_STEPS = (CURRENT_HR_STEPS + 1) % HR_STEPS_PER_REV;
+    } else {
+      CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS - 1 + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
+      CURRENT_HR_STEPS = (CURRENT_HR_STEPS - 1 + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
+    }
   }
 }
 
@@ -102,8 +133,11 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
 
   digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
 
-  for (int step = 0; step < totalSteps; step++) {
+  int step = 0;
 
+  // Replace the blocking for loop with a non-blocking while loop
+  while (step < totalSteps) {
+    // Handle ramp up, constant speed, and ramp down
     if (step < rampUpSteps) {
       currentSpeed = map(step, 0, rampUpSteps, 1, maxSpeedMultiplier);
     } else if (step > totalSteps - rampDownSteps) {
@@ -112,7 +146,7 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
       currentSpeed = maxSpeedMultiplier;
     }
 
-
+    // Pulse the minute motor if necessary
     if (minCounter < minSteps) {
       pulseMotor(PUL_PIN_MIN, currentSpeed);
       minCounter++;
@@ -123,7 +157,7 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
       }
     }
 
-
+    // Pulse the hour motor if necessary
     if (hrCounter < hrSteps && minCounter % 12 == 0) {
       pulseMotor(PUL_PIN_HR, currentSpeed);
       hrCounter++;
@@ -133,11 +167,20 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
         CURRENT_HR_STEPS = (CURRENT_HR_STEPS - 1 + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
       }
     }
+
+    step++;
+
+    // Yield control every 100 steps to prevent blocking and avoid watchdog reset
+    if (step % 100 == 0) {
+      vTaskDelay(10 / portTICK_PERIOD_MS);  // Yield control for a short time
+    }
   }
 }
 
+
 void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultiplier) {
-  unsigned long endTime = millis() + durationMs;
+  unsigned long startTime = millis();
+  unsigned long endTime = startTime + durationMs;
   digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
 
   int currentSpeed = 1;
@@ -146,8 +189,10 @@ void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultip
   int totalSteps = durationMs * maxSpeedMultiplier;
   int minCounter = 0;
 
-  for (int step = 0; step < totalSteps; step++) {
+  int step = 0;
 
+  while (millis() < endTime) {
+    // Handle ramp up, constant speed, and ramp down
     if (step < rampUpSteps) {
       currentSpeed = map(step, 0, rampUpSteps, 1, maxSpeedMultiplier);
     } else if (step > totalSteps - rampDownSteps) {
@@ -156,6 +201,7 @@ void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultip
       currentSpeed = maxSpeedMultiplier;
     }
 
+    // Pulse the motor
     pulseMotor(PUL_PIN_MIN, currentSpeed);
 
     minCounter++;
@@ -165,18 +211,27 @@ void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultip
 
     // Update the current position
     if (clockwise) {
-        CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS + 1) % MIN_STEPS_PER_REV;
-        if (minCounter % 12 == 0) {
-            CURRENT_HR_STEPS = (CURRENT_HR_STEPS + 1) % HR_STEPS_PER_REV;
-        }
+      CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS + 1) % MIN_STEPS_PER_REV;
+      if (minCounter % 12 == 0) {
+        CURRENT_HR_STEPS = (CURRENT_HR_STEPS + 1) % HR_STEPS_PER_REV;
+      }
     } else {
-        CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS - 1 + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
-        if (minCounter % 12 == 0) {
-            CURRENT_HR_STEPS = (CURRENT_HR_STEPS - 1 + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
-        }
+      CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS - 1 + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
+      if (minCounter % 12 == 0) {
+        CURRENT_HR_STEPS = (CURRENT_HR_STEPS - 1 + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
+      }
+    }
+
+    // Increment step counter
+    step++;
+
+    // Yield control every 100 steps to prevent blocking and avoid watchdog reset
+    if (step % 100 == 0) {
+      vTaskDelay(10 / portTICK_PERIOD_MS); // Short delay to yield control
     }
   }
 }
+
 
 int getCurrentHour() {
   int hour = (CURRENT_HR_STEPS % HR_STEPS_PER_REV) / (HR_STEPS_PER_REV / 12);
@@ -212,11 +267,15 @@ void moveToHome() {
   CURRENT_MIN_STEPS = 0;
 }
 
-void setTime(int hr, int min) {
+void setTime(int hr, int min, int speed = 15) {
   Serial.print("Prior time: ");
   Serial.print(getCurrentHour());
   Serial.print(":");
-  Serial.print(getCurrentMin());
+  Serial.println(getCurrentMin());
+  Serial.print("Current Step Pos: Hr:");
+  Serial.print(CURRENT_HR_STEPS);
+  Serial.print(" Min:");
+  Serial.println(CURRENT_MIN_STEPS);
   Serial.print(" Setting time to ");
   Serial.print(hr);
   Serial.print(":");
@@ -227,13 +286,14 @@ void setTime(int hr, int min) {
   int hrSteps = (targetHrSteps - CURRENT_HR_STEPS + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
   int minSteps = (targetMinSteps - CURRENT_MIN_STEPS + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
 
-  spinProportional(minSteps, hrSteps, false, 15);
-
   Serial.println("Steps to target: ");
   Serial.print("Hour: ");
   Serial.print(targetHrSteps);
   Serial.print(" Min: ");
   Serial.println(targetMinSteps);
+
+  spinProportional(minSteps, hrSteps, false, speed);
+
   CURRENT_HR_STEPS = targetHrSteps;
   CURRENT_MIN_STEPS = targetMinSteps;
 }
@@ -260,7 +320,7 @@ void spinTest() {
     Serial.print("Spin time 5s. Speed: ");
     Serial.println(i);
     spinProportionalDuration(5000, true, i);
-    delay(1000);
+    vTaskDelay(1000);
   }
 }
 

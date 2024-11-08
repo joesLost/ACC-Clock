@@ -28,9 +28,13 @@ void dmxHandler(void *pvParameters) {
 
         if (now - lastUpdate > 1000) {
           Serial.printf("Start code is 0x%02X and slot 1 is 0x%02X\n", data[0], data[1]);
+          // Log each DMX value to the serial monitor
+          for (int i = 0; i < 9; i++) {
+            Serial.printf("DMX Channel %d: %d\n", i, data[i]);
+          }
           lastUpdate = now;
         }
-
+        
         // Process DMX channels
         processDMXChannels();
       } else {
@@ -43,13 +47,14 @@ void dmxHandler(void *pvParameters) {
 
 void processDMXChannels() {
   MotorCommand cmd;
+
   // Channel 1: Preset Clock Modes
-  switch (data[0]) {
+  switch (data[1]) {
     case 0:
-      // No Action (idle state)
-      xQueueReset(motorCommandQueue);
+      cmd.type = STOP_HANDS;
+      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
-    case 1 ... 5:
+    case 2 ... 5:
       // Real Minute Advance
       // Not yet working, need RTC functionality
       // advanceRealMinute();
@@ -57,8 +62,9 @@ void processDMXChannels() {
     case 6 ... 124:
       // Spin Forward in Time
       cmd.type = SPIN_CONTINUOUS;
-      cmd.speed = map(data[0], 6, 124, 100, 1);
+      cmd.speed = map(data[1], 6, 124, 100, 1);
       cmd.direction = true;
+      cmd.proportional = true;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
     case 125 ... 129:
@@ -69,8 +75,9 @@ void processDMXChannels() {
     case 130 ... 249:
       // Spin Backward in Time
       cmd.type = SPIN_CONTINUOUS;
-      cmd.speed = map(data[0], 130, 249, 1, 100);
+      cmd.speed = map(data[1], 130, 249, 1, 100);
       cmd.direction = false;
+      cmd.proportional = true;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
     case 250 ... 254:
@@ -85,16 +92,20 @@ void processDMXChannels() {
       break;
   }
 
-  // Channel 2-3: Time position (16-bit control, 5-minute intervals with 455 steps per interval)
-  if (data[1] != 0 || data[2] != 0) {
-    // Combine Channel 2 (high byte) and Channel 3 (low byte) to form the 16-bit value
-    int combinedValue = (data[1] << 8) | data[2];
+  // Channel 2: setTime Speed (1-100) changes how quickly the clock will move to the new time
+  int setTimeSpeed = (data[2] == 0) ? 15 : map(data[2], 0, 255, 1, 100);
+
+  // Channel 3-4: Time position (16-bit control, 5-minute intervals with 455 steps per interval)
+  if (data[3] != 0 || data[4] != 0) {
+    // Combine Channel 3 (high byte) and Channel 4 (low byte) to form the 16-bit value
+    int combinedValue = (data[3] << 8) | data[4];
 
     // Calculate the position within the 12-hour clock (each 5-minute interval corresponds to 455 values)
     int intervalIndex = combinedValue / 455;
 
     // Calculate hour and minute
     int hour = intervalIndex / 12;
+    hour = (hour == 0) ? 12 : hour; // Convert 0 to 12
     int minute = (intervalIndex % 12) * 5; // Convert to 5-minute increments (0, 5, 10, ..., 55)
 
     cmd.type = SET_TIME;
@@ -103,13 +114,14 @@ void processDMXChannels() {
     xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
   }
 
-  // Channel 4-6: RGB LED Control
-  int redIntensity = data[3];
-  int greenIntensity = data[4];
-  int blueIntensity = data[5];
+  // Channel 5: LED Intensity Master
+  int ledIntensity = data[5];
+  setLEDIntensity(ledIntensity);
+
+  // Channel 6-8: RGB LED Control
+  int redIntensity = data[6];
+  int greenIntensity = data[7];
+  int blueIntensity = data[8];
   setLEDColor(redIntensity, greenIntensity, blueIntensity);
 
-  // Channel 7: LED Intensity Master
-  int ledIntensity = data[6];
-  setLEDIntensity(ledIntensity);
 }

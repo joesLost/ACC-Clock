@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "ACC Clock control",
+			"path": "."
+		},
+		{
+			"name": "Test Motors on ESP32",
+			"path": "../Test Motors on ESP32"
+		}
+	],
+	"settings": {}
+}

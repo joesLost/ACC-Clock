@@ -1,5 +1,5 @@
 #ifndef MOTORS_H
-#define MOTORS_H`
+#define MOTORS_H
 
 #include <Arduino.h>
 
@@ -14,6 +14,7 @@ typedef struct {
   MotorCommandType type;  // The type of motor command
   int speed;              // Speed for spinning (used for SPIN_CONTINUOUS)
   bool direction;         // Direction (true for forward, false for backward)
+  bool proportional;      // Proportional spinning (used for SPIN_PROPORTIONAL)
   int hour;               // Hour for SET_TIME command
   int minute;             // Minute for SET_TIME command
 } MotorCommand;
@@ -29,9 +30,10 @@ const float GEAR_RATIO_MIN = 40.0 / 20.0; // Shaft gear / Motor Gear
 const int HR_STEPS_PER_REV = PULS_PER_REV * GEAR_RATIO_HR; // The number of steps to make one full revolution on the hour hand
 const int MIN_STEPS_PER_REV = PULS_PER_REV * GEAR_RATIO_MIN; // The number of steps to make one full revolution on the minute hand
 
-volatile int CURRENT_HR_STEPS = HR_STEPS_PER_REV / 2; // Initial position is 6 o'clock
-volatile int CURRENT_MIN_STEPS = MIN_STEPS_PER_REV / 2; // Initial position is 30 minutes
+extern volatile int CURRENT_HR_STEPS;
+extern volatile int CURRENT_MIN_STEPS;
 
+void motorControlTask(void *pvParameters);
 void pulseMotor(int pulPin, int speedMultiplier);
 void spinMotor(bool isMinuteMotor, bool clockwise, int steps, int speedMultiplier);
 void spinProportional(int hrSteps, int minSteps, bool clockwise, int maxSpeedMultiplier);
