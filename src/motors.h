@@ -36,7 +36,9 @@ extern volatile int CURRENT_MIN_STEPS;
 
 void motorControlTask(void* pvParameters);
 void pulseMotor(int pulPin, int speedMultiplier);
+void updatePos(bool isMinMotor, bool direction);
 void spinMotor(bool isMinuteMotor, bool clockwise, int steps, int speedMultiplier);
+void spinContinuous(int speed, bool clockwise, bool isProportional);
 void spinProportional(int hrSteps, int minSteps, bool clockwise, int maxSpeedMultiplier);
 void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultiplier);
 int getCurrentHour();
@@ -48,7 +50,7 @@ void correctTimePos(int hr, int min);
 void initToHome();
 void spinTest();
 void timeTest();
+void advanceRealMin();
 
-void spinContinuous(int speed, bool clockwise);
 
 #endif // MOTORS_H

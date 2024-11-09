@@ -4,13 +4,9 @@
 #include "leds.h"
 #include "globals.h"
 
-
-// Function declarations
-void logStackUsage(void* pvParameters);
 void serialHandler(void* pvParameters);
 
 QueueHandle_t motorCommandQueue;
-
 
 void setup() {
   Serial.begin(115200);
@@ -63,6 +59,9 @@ void setup() {
   ); 
 }
 
+void loop() {
+ // Silence is golden
+}
 
 void serialHandler(void *pvParameters) {
   while (true) {
@@ -80,7 +79,7 @@ void serialHandler(void *pvParameters) {
         spinTest();
       } else if (command == "checkTime") {
         checkTime();
-      } else if (command.startsWith("correctTimePosition")) {
+      } else if (command.startsWith("correctTimePos")) {
         int firstSpaceIndex = command.indexOf(' ');
         int secondSpaceIndex = command.indexOf(' ', firstSpaceIndex + 1);
 
@@ -92,7 +91,7 @@ void serialHandler(void *pvParameters) {
           int minute = minuteStr.toInt();
 
           if (hour >= 1 && hour <= 12 && minute >= 0 && minute < 60) {
-            correctTimePosition(hour, minute);
+            correctTimePos(hour, minute);
           } else {
             Serial.println("Invalid time. Please enter hour (1-12) and minute (0-59).");
           }
@@ -122,10 +121,6 @@ void serialHandler(void *pvParameters) {
         Serial.println("Unknown command.");
       }
     }
-    vTaskDelay(10 / portTICK_PERIOD_MS); // Small delay to prevent watchdog timer reset
+    taskYIELD();
   }
-}
-
-void loop() {
-  // Empty because we are using FreeRTOS tasks
 }

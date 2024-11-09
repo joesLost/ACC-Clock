@@ -43,10 +43,10 @@ void motorControlTask(void *pvParameters) {
       }
     }
     if (isSpinning) {
-      spinContinuous(spinSpeed, spinDirection);     
+      spinContinuous(spinSpeed, spinDirection, isProportional);     
     } 
     else if (isMinAdvance) {
-      advanceRealMinute();
+      advanceRealMin();
     }
     taskYIELD();
   }
@@ -58,17 +58,6 @@ void pulseMotor(int pulPin, int speedMultiplier) {
   delayMicroseconds(5); // pulse width high
   digitalWrite(pulPin, LOW);
   delayMicroseconds(delayTime);
-}
-
-void spinMotor(bool isMinMotor, bool clockwise, int steps, int speedMultiplier) {
-  int pulPin = isMinMotor ? PUL_PIN_MIN : PUL_PIN_HR;
-
-  digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
-  Serial.println(steps);
-  for (int i = 0; i < steps; i++) {
-    pulseMotor(pulPin, speedMultiplier);
-    updatePos(isMinMotor, clockwise);
-  }
 }
 
 void updatePos(bool isMinMotor, bool direction){
@@ -87,10 +76,21 @@ void updatePos(bool isMinMotor, bool direction){
   }
 }
 
-void spinContinuous(int speed, bool clockwise) {
+void spinMotor(bool isMinMotor, bool clockwise, int steps, int speedMultiplier) {
+  int pulPin = isMinMotor ? PUL_PIN_MIN : PUL_PIN_HR;
+
+  digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
+  Serial.println(steps);
+  for (int i = 0; i < steps; i++) {
+    pulseMotor(pulPin, speedMultiplier);
+    updatePos(isMinMotor, clockwise);
+  }
+}
+
+void spinContinuous(int speed, bool clockwise, bool isProportional) {
   static int previousSpeed = -1;
   int currentSpeed = speed;
-  const int pulseBatchSize = 1000;  // Number of pulses to generate before yielding
+  const int pulseBatchSize = 1200;  // Number of pulses to generate before yielding
   digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
   for (int step = 0; step < pulseBatchSize; ++step) {
     if (speed != previousSpeed) {
@@ -99,10 +99,14 @@ void spinContinuous(int speed, bool clockwise) {
       currentSpeed = speed;
     }
     pulseMotor(PUL_PIN_MIN, currentSpeed);
-    pulseMotor(PUL_PIN_HR, currentSpeed);
-
     updatePos(true, clockwise);
-
+    if(!isProportional ){
+      pulseMotor(PUL_PIN_HR, currentSpeed);
+      updatePos(true, clockwise);
+    } else if (step % 12 == 0) {
+      pulseMotor(PUL_PIN_HR, currentSpeed);
+      updatePos(false, clockwise);
+    }
   }
   previousSpeed = speed;
 }
@@ -318,7 +322,7 @@ void timeTest() {
   }
 }
 
-void advanceRealMinute() {
+void advanceRealMin() {
   static unsigned long lastUpdateTime = 0;
   unsigned long currentTime = millis();
   if (currentTime - lastUpdateTime >= 60000) { // Check if a minute has passed

@@ -41,7 +41,7 @@ void dmxHandler(void *pvParameters) {
         Serial.println("A DMX error occurred.");
       }
     }
-    vTaskDelay(10 / portTICK_PERIOD_MS); // Small delay to prevent watchdog timer reset
+    taskYIELD();
   }
 }
 
