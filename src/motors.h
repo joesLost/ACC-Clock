@@ -7,7 +7,8 @@ typedef enum {
   SPIN_CONTINUOUS,
   STOP_HANDS,
   MOVE_TO_HOME,
-  SET_TIME
+  SET_TIME,
+  MIN_ADVANCE,
 } MotorCommandType;
 
 typedef struct {
@@ -33,7 +34,7 @@ const int MIN_STEPS_PER_REV = PULS_PER_REV * GEAR_RATIO_MIN; // The number of st
 extern volatile int CURRENT_HR_STEPS;
 extern volatile int CURRENT_MIN_STEPS;
 
-void motorControlTask(void *pvParameters);
+void motorControlTask(void* pvParameters);
 void pulseMotor(int pulPin, int speedMultiplier);
 void spinMotor(bool isMinuteMotor, bool clockwise, int steps, int speedMultiplier);
 void spinProportional(int hrSteps, int minSteps, bool clockwise, int maxSpeedMultiplier);
@@ -41,16 +42,13 @@ void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultip
 int getCurrentHour();
 String getCurrentMin() ;
 void moveToHome();
-void setTime(int hr, int min);
+void setTime(int hr, int min, int speed=15);
 void checkTime();
-void correctTimePosition(int hr, int min);
+void correctTimePos(int hr, int min);
 void initToHome();
 void spinTest();
 void timeTest();
 
 void spinContinuous(int speed, bool clockwise);
-
-
-
 
 #endif // MOTORS_H

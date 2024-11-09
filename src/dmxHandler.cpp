@@ -56,8 +56,9 @@ void processDMXChannels() {
       break;
     case 2 ... 5:
       // Real Minute Advance
-      // Not yet working, need RTC functionality
-      // advanceRealMinute();
+      cmd.type = MIN_ADVANCE;
+      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      break;
       break;
     case 6 ... 124:
       // Spin Forward in Time
@@ -123,5 +124,4 @@ void processDMXChannels() {
   int greenIntensity = data[7];
   int blueIntensity = data[8];
   setLEDColor(redIntensity, greenIntensity, blueIntensity);
-
 }

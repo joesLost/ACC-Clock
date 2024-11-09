@@ -18,7 +18,7 @@ extern dmx_port_t dmxPort;
 extern dmx_config_t config;
 extern dmx_personality_t personalities[];
 
-void dmxHandler(void *pvParameters);
+void dmxHandler(void* pvParameters);
 void processDMXChannels();
 
 #endif // DMXHANDLER_H
