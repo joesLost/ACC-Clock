@@ -5,7 +5,7 @@
 
 // Configuration for NeoPixel LEDs
 #define LED_PIN 5          // Data pin for NeoPixel LEDs connected to GPIO 5
-#define NUM_LEDS 100        // Number of LEDs in the strip
+#define NUM_LEDS 186        // Number of LEDs in the strip
 #define BRIGHTNESS 255     // Maximum brightness
 
 extern Adafruit_NeoPixel strip;

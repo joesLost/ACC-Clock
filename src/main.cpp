@@ -49,14 +49,14 @@ void setup() {
     1
   );         // Core where the task should run
 
-  xTaskCreate(
-    serialHandler, // Function to implement the task
-    "Serial Handler", // Name of the task
-    10000,      // Stack size in words
-    NULL,       // Task input parameter
-    1,          // Priority of the task
-    NULL
-  ); 
+  // xTaskCreate(
+  //   serialHandler, // Function to implement the task
+  //   "Serial Handler", // Name of the task
+  //   10000,      // Stack size in words
+  //   NULL,       // Task input parameter
+  //   1,          // Priority of the task
+  //   NULL
+  // ); 
 }
 
 void loop() {

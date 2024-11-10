@@ -34,7 +34,9 @@ void motorControlTask(void *pvParameters) {
           break;
         case SET_TIME:
           isSpinning = false;
-          setTime(cmd.hour, cmd.minute, cmd.speed);
+          Serial.print("Speed in motor handler: ");
+          Serial.println(cmd.speed);
+          setTime(cmd.hour, cmd.minute, max(cmd.speed, 1));
           break;
         case MIN_ADVANCE:
           isSpinning = false;
@@ -43,7 +45,8 @@ void motorControlTask(void *pvParameters) {
       }
     }
     if (isSpinning) {
-      spinContinuous(spinSpeed, spinDirection, isProportional);     
+      Serial.println(spinSpeed);
+      spinContinuous(abs(spinSpeed), spinDirection, isProportional);     
     } 
     else if (isMinAdvance) {
       advanceRealMin();
@@ -88,13 +91,13 @@ void spinMotor(bool isMinMotor, bool clockwise, int steps, int speedMultiplier) 
 }
 
 void spinContinuous(int speed, bool clockwise, bool isProportional) {
-  static int previousSpeed = -1;
+  static int previousSpeed = 1;
   int currentSpeed = speed;
   const int pulseBatchSize = 1200;  // Number of pulses to generate before yielding
   digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
   for (int step = 0; step < pulseBatchSize; ++step) {
     if (speed != previousSpeed) {
-      currentSpeed = map(step, 0, pulseBatchSize, previousSpeed, speed);
+      currentSpeed = map(step, 1, pulseBatchSize, previousSpeed, speed);
     } else {
       currentSpeed = speed;
     }
@@ -288,7 +291,7 @@ void setTime(int hr, int min, int speed) {
   Serial.print(" Min: ");
   Serial.println(targetMinSteps);
 
-  spinProportional(minSteps, hrSteps, false, speed);
+  spinProportional(minSteps, hrSteps, false, abs(speed));
 
   CURRENT_HR_STEPS = targetHrSteps;
   CURRENT_MIN_STEPS = targetMinSteps;
