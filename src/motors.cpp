@@ -12,13 +12,16 @@ void motorControlTask(void *pvParameters) {
   bool isMinAdvance = false;
   bool spinDirection = true; // Default spin direction
   bool isProportional = false;
+  bool waitForReset = false;
   int spinSpeed = 3;         // Default speed
   while (true) {
     // Check if there is a new command in the queue
     if (xQueueReceive(motorCommandQueue, &cmd, 0) == pdPASS) {
       switch (cmd.type) {
         case SPIN_CONTINUOUS:
+          if (!waitForReset){
           isSpinning = true;
+          }
           spinSpeed = max(abs(cmd.speed), 1);
           spinDirection = cmd.direction;
           isProportional = cmd.proportional;
@@ -26,6 +29,7 @@ void motorControlTask(void *pvParameters) {
         case STOP_HANDS:
           isSpinning = false;
           isMinAdvance = false;
+          waitForReset = false;
           xQueueReset(motorCommandQueue);
           break;
         case MOVE_TO_HOME:
@@ -36,6 +40,7 @@ void motorControlTask(void *pvParameters) {
           if(isSpinning){
             setTime(cmd.hour, cmd.minute, spinSpeed, 2);
             isSpinning = false;
+            waitForReset = true;
           }else{
             setTime(cmd.hour, cmd.minute, max(cmd.speed, 1), 0);
           }
