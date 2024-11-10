@@ -304,7 +304,7 @@ void setTime(int hr, int min, int speed, int extraRevs) {
   Serial.print(" Min: ");
   Serial.println(targetMinSteps);
 
-  spinProportional(minSteps, hrSteps, false, abs(speed));
+  spinProportional(minSteps, hrSteps, true, abs(speed));
 
   CURRENT_HR_STEPS = targetHrSteps;
   CURRENT_MIN_STEPS = targetMinSteps;
