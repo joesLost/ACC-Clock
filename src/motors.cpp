@@ -19,7 +19,7 @@ void motorControlTask(void *pvParameters) {
       switch (cmd.type) {
         case SPIN_CONTINUOUS:
           isSpinning = true;
-          spinSpeed = cmd.speed;
+          spinSpeed = max(abs(cmd.speed), 1);
           spinDirection = cmd.direction;
           isProportional = cmd.proportional;
           break;
@@ -33,10 +33,12 @@ void motorControlTask(void *pvParameters) {
           moveToHome();
           break;
         case SET_TIME:
-          isSpinning = false;
-          Serial.print("Speed in motor handler: ");
-          Serial.println(cmd.speed);
-          setTime(cmd.hour, cmd.minute, max(cmd.speed, 1));
+          if(isSpinning){
+            setTime(cmd.hour, cmd.minute, spinSpeed, 2);
+            isSpinning = false;
+          }else{
+            setTime(cmd.hour, cmd.minute, max(cmd.speed, 1), 0);
+          }
           break;
         case MIN_ADVANCE:
           isSpinning = false;
@@ -45,8 +47,7 @@ void motorControlTask(void *pvParameters) {
       }
     }
     if (isSpinning) {
-      Serial.println(spinSpeed);
-      spinContinuous(abs(spinSpeed), spinDirection, isProportional);     
+      spinContinuous(spinSpeed, spinDirection, isProportional);     
     } 
     else if (isMinAdvance) {
       advanceRealMin();
@@ -228,9 +229,13 @@ int getCurrentHour() {
   return (hour == 0 ? 12 : hour);
 }
 
-String getCurrentMin() {
-  int minute = (CURRENT_MIN_STEPS % MIN_STEPS_PER_REV) / (MIN_STEPS_PER_REV / 60);
-  return String(minute < 10 ? "0" : "") + String(minute);
+// String getCurrentMin() {
+//   int minute = (CURRENT_MIN_STEPS % MIN_STEPS_PER_REV) / (MIN_STEPS_PER_REV / 60);
+//   return String(minute < 10 ? "0" : "") + String(minute);
+// }
+int getCurrentMin() {
+  int min = (CURRENT_MIN_STEPS % MIN_STEPS_PER_REV) / (MIN_STEPS_PER_REV / 60);
+  return min;
 }
 
 void checkTime() {
@@ -266,7 +271,7 @@ void moveToHome() {
   CURRENT_MIN_STEPS = 0;
 }
 
-void setTime(int hr, int min, int speed) {
+void setTime(int hr, int min, int speed, int extraRevs) {
   Serial.print("Prior time: ");
   Serial.print(getCurrentHour());
   Serial.print(":");
@@ -284,7 +289,10 @@ void setTime(int hr, int min, int speed) {
   int targetMinSteps = map(min, 0, 60, 0, MIN_STEPS_PER_REV);
   int hrSteps = (targetHrSteps - CURRENT_HR_STEPS + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
   int minSteps = (targetMinSteps - CURRENT_MIN_STEPS + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
-
+  if(extraRevs > 0){
+    hrSteps += HR_STEPS_PER_REV * extraRevs;
+    minSteps += MIN_STEPS_PER_REV * extraRevs;
+  }
   Serial.println("Steps to target: ");
   Serial.print("Hour: ");
   Serial.print(targetHrSteps);
