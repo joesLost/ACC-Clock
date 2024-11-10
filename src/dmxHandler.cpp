@@ -41,6 +41,8 @@ void dmxHandler(void *pvParameters) {
       } else {
         Serial.println("A DMX error occurred.");
       }
+    } else {
+      Serial.println("No DMX packet received.");
     }
     taskYIELD();
   }
@@ -60,15 +62,12 @@ void processDMXChannels() {
       cmd.type = MIN_ADVANCE;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
-      break;
     case 6 ... 124:
       // Spin Forward in Time
       cmd.type = SPIN_CONTINUOUS;
       cmd.speed = map(data[1 + dmxAddress], 6, 124, 100, 1);
       cmd.direction = true;
       cmd.proportional = true;
-      Serial.println(data[1 + dmxAddress]);
-      Serial.println(cmd.speed);
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
     case 125 ... 129:
@@ -92,7 +91,9 @@ void processDMXChannels() {
     case 255:
       // Reset to 12:00
       cmd.type = MOVE_TO_HOME;
-      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      if(not (getCurrentHour() == 12 && getCurrentMin() == 0)){
+        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      }
       break;
   }
 
@@ -118,7 +119,6 @@ void processDMXChannels() {
         xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       }
     }
-
   }
 
   // Channel 5: LED Intensity Master
