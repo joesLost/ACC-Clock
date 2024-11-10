@@ -32,7 +32,6 @@ void dmxHandler(void *pvParameters) {
           // Log each DMX value to the serial monitor
           for (int i = 1 + dmxAddress; i < 9 + dmxAddress; i++) {
             Serial.printf("DMX Channel %d: %d\n", i, data[i]);
-            Serial.println("next");
           }
           lastUpdate = now;
         }
@@ -65,9 +64,11 @@ void processDMXChannels() {
     case 6 ... 124:
       // Spin Forward in Time
       cmd.type = SPIN_CONTINUOUS;
-      cmd.speed = map(data[1], 6, 124, 100, 1);
+      cmd.speed = map(data[1 + dmxAddress], 6, 124, 100, 1);
       cmd.direction = true;
       cmd.proportional = true;
+      Serial.println(data[1 + dmxAddress]);
+      Serial.println(cmd.speed);
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
     case 125 ... 129:
@@ -78,7 +79,7 @@ void processDMXChannels() {
     case 130 ... 249:
       // Spin Backward in Time
       cmd.type = SPIN_CONTINUOUS;
-      cmd.speed = map(data[1], 130, 249, 1, 100);
+      cmd.speed = map(data[1 + dmxAddress], 130, 249, 1, 100);
       cmd.direction = false;
       cmd.proportional = true;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
