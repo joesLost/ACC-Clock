@@ -13,14 +13,14 @@ void motorControlTask(void *pvParameters) {
   bool spinDirection = true; // Default spin direction
   bool isProportional = false;
   bool waitForReset = false;
-  int spinSpeed = 3;         // Default speed
+  int spinSpeed = 15;         // Default speed
   while (true) {
     // Check if there is a new command in the queue
     if (xQueueReceive(motorCommandQueue, &cmd, 0) == pdPASS) {
       switch (cmd.type) {
         case SPIN_CONTINUOUS:
           if (!waitForReset){
-          isSpinning = true;
+            isSpinning = true;
           }
           spinSpeed = max(abs(cmd.speed), 1);
           spinDirection = cmd.direction;
@@ -33,12 +33,14 @@ void motorControlTask(void *pvParameters) {
           xQueueReset(motorCommandQueue);
           break;
         case MOVE_TO_HOME:
-          isSpinning = false;
-          moveToHome();
+          if (!waitForReset){
+            isSpinning = false;
+            moveToHome();
+          }
           break;
         case SET_TIME:
           if(isSpinning){
-            setTime(cmd.hour, cmd.minute, spinSpeed, 2);
+            setTime(cmd.hour, cmd.minute, spinSpeed, 1);
             isSpinning = false;
             waitForReset = true;
           }else{
@@ -111,7 +113,7 @@ void spinContinuous(int speed, bool clockwise, bool isProportional) {
     updatePos(true, clockwise);
     if(!isProportional ){
       pulseMotor(PUL_PIN_HR, currentSpeed);
-      updatePos(true, clockwise);
+      updatePos(false, clockwise);
     } else if (step % 12 == 0) {
       pulseMotor(PUL_PIN_HR, currentSpeed);
       updatePos(false, clockwise);
@@ -133,9 +135,7 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
 
   int step = 0;
 
-  // Replace the blocking for loop with a non-blocking while loop
   while (step < totalSteps) {
-    // Handle ramp up, constant speed, and ramp down
     if (step < rampUpSteps) {
       currentSpeed = map(step, 0, rampUpSteps, 1, maxSpeedMultiplier);
     } else if (step > totalSteps - rampDownSteps) {
@@ -148,29 +148,20 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
     if (minCounter < minSteps) {
       pulseMotor(PUL_PIN_MIN, currentSpeed);
       minCounter++;
-      if (clockwise) {
-        CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS + 1) % MIN_STEPS_PER_REV;
-      } else {
-        CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS - 1 + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
-      }
+      updatePos(true, clockwise);
     }
 
     // Pulse the hour motor if necessary
     if (hrCounter < hrSteps && minCounter % 12 == 0) {
       pulseMotor(PUL_PIN_HR, currentSpeed);
       hrCounter++;
-      if (clockwise) {
-        CURRENT_HR_STEPS = (CURRENT_HR_STEPS + 1) % HR_STEPS_PER_REV;
-      } else {
-        CURRENT_HR_STEPS = (CURRENT_HR_STEPS - 1 + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
-      }
+      updatePos(false, clockwise);
     }
 
     step++;
 
-    // Yield control every 100 steps to prevent blocking and avoid watchdog reset
-    if (step % 100 == 0) {
-      vTaskDelay(10 / portTICK_PERIOD_MS);  // Yield control for a short time
+    if (step % 1200 == 0) {
+      taskYIELD();  // Yield control for a short time
     }
   }
 }
@@ -292,23 +283,33 @@ void setTime(int hr, int min, int speed, int extraRevs) {
 
   int targetHrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);
   int targetMinSteps = map(min, 0, 60, 0, MIN_STEPS_PER_REV);
+
   int hrSteps = (targetHrSteps - CURRENT_HR_STEPS + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
   int minSteps = (targetMinSteps - CURRENT_MIN_STEPS + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
+
+  int fullMinRevs = (hrSteps / (HR_STEPS_PER_REV / 12)) * MIN_STEPS_PER_REV;
+  minSteps += fullMinRevs;
+
   if(extraRevs > 0){
     hrSteps += HR_STEPS_PER_REV * extraRevs;
     minSteps += MIN_STEPS_PER_REV * extraRevs;
   }
+
   Serial.println("Steps to target: ");
   Serial.print("Hour: ");
-  Serial.print(targetHrSteps);
+  Serial.print(hrSteps);
   Serial.print(" Min: ");
-  Serial.println(targetMinSteps);
+  Serial.println(minSteps);
 
+  // Call spinProportional to move both hands
   spinProportional(minSteps, hrSteps, true, abs(speed));
 
+  // Update the current step positions
   CURRENT_HR_STEPS = targetHrSteps;
   CURRENT_MIN_STEPS = targetMinSteps;
 }
+
+
 
 void correctTimePos(int hr, int min) {
   int hrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);
