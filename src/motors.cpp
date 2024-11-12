@@ -44,7 +44,7 @@ void motorControlTask(void *pvParameters) {
             isSpinning = false;
             waitForReset = true;
           }else{
-            setTime(cmd.hour, cmd.minute, max(cmd.speed, 1), 0);
+            setTime(cmd.hour, cmd.minute, max(cmd.speed, 10), 0);
           }
           break;
         case MIN_ADVANCE:
@@ -122,12 +122,12 @@ void spinContinuous(int speed, bool clockwise, bool isProportional) {
   previousSpeed = speed;
 }
 
-void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMultiplier) {
+void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMultiplier, bool noRamp) {
+  static int currentSpeed = 15;
   int totalSteps = max(minSteps, hrSteps);
   int rampUpSteps = totalSteps / 15;
   int rampDownSteps = totalSteps / 15;
 
-  int currentSpeed = 1;
   int minCounter = 0;
   int hrCounter = 0;
 
@@ -136,11 +136,15 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
   int step = 0;
 
   while (step < totalSteps) {
-    if (step < rampUpSteps) {
-      currentSpeed = map(step, 0, rampUpSteps, 1, maxSpeedMultiplier);
-    } else if (step > totalSteps - rampDownSteps) {
-      currentSpeed = map(step, totalSteps - rampDownSteps, totalSteps, maxSpeedMultiplier, 1);
-    } else {
+    if(!noRamp){
+      if (step < rampUpSteps) {
+      currentSpeed = map(step, 0, rampUpSteps, 15, maxSpeedMultiplier);
+      } else if (step > totalSteps - rampDownSteps) {
+        currentSpeed = map(step, totalSteps - rampDownSteps, totalSteps, maxSpeedMultiplier, 15);
+      } else {
+        currentSpeed = maxSpeedMultiplier;
+      } 
+    }else {
       currentSpeed = maxSpeedMultiplier;
     }
 
@@ -268,10 +272,7 @@ void moveToHome() {
 }
 
 void setTime(int hr, int min, int speed, int extraRevs) {
-  Serial.print("Prior time: ");
-  Serial.print(getCurrentHour());
-  Serial.print(":");
-  Serial.println(getCurrentMin());
+  checkTime();
   Serial.print("Current Step Pos: Hr:");
   Serial.print(CURRENT_HR_STEPS);
   Serial.print(" Min:");

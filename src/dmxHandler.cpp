@@ -98,7 +98,7 @@ void processDMXChannels() {
   }
 
   // Channel 2: setTime Speed (1-100) changes how quickly the clock will move to the new time
-  int setTimeSpeed = (data[2 + dmxAddress] == 0) ? 15 : map(data[2 + dmxAddress], 1, 255, 1, 100);
+  int setTimeSpeed = (data[2 + dmxAddress] == 0) ? 15 : map(data[2 + dmxAddress], 1, 255, 10, 100);
 
   // Channel 3-4: Time position (16-bit control, 5-minute intervals with 455 steps per interval)
   if (data[3 + dmxAddress] != 0 || data[4 + dmxAddress] != 0) {
@@ -116,6 +116,7 @@ void processDMXChannels() {
         cmd.type = SET_TIME;
         cmd.hour = hour;
         cmd.minute = minute;
+        cmd.speed = setTimeSpeed;
         xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       }
     }

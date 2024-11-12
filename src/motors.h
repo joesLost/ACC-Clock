@@ -39,7 +39,7 @@ void pulseMotor(int pulPin, int speedMultiplier);
 void updatePos(bool isMinMotor, bool direction);
 void spinMotor(bool isMinuteMotor, bool clockwise, int steps, int speedMultiplier);
 void spinContinuous(int speed, bool clockwise, bool isProportional);
-void spinProportional(int hrSteps, int minSteps, bool clockwise, int maxSpeedMultiplier);
+void spinProportional(int hrSteps, int minSteps, bool clockwise, int maxSpeedMultiplier, bool noRamp = false);
 void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultiplier);
 int getCurrentHour();
 int getCurrentMin() ;
