@@ -5,15 +5,15 @@
 volatile int CURRENT_HR_STEPS = HR_STEPS_PER_REV / 2; // Initial position is 6 o'clock
 volatile int CURRENT_MIN_STEPS = MIN_STEPS_PER_REV / 2; // Initial position is 30 minutes
 
-
 void motorControlTask(void *pvParameters) {
   MotorCommand cmd;
+  //Set updefaults
   bool isSpinning = false;
-  bool isMinAdvance = false;
-  bool spinDirection = true; // Default spin direction
+  bool isMinAdvance = false; 
+  bool spinDirection = true; 
   bool isProportional = false;
   bool waitForReset = false;
-  int spinSpeed = 15;         // Default speed
+  int spinSpeed = 15;
   while (true) {
     // Check if there is a new command in the queue
     if (xQueueReceive(motorCommandQueue, &cmd, 0) == pdPASS) {
@@ -22,7 +22,7 @@ void motorControlTask(void *pvParameters) {
           if (!waitForReset){
             isSpinning = true;
           }
-          spinSpeed = max(abs(cmd.speed), 1);
+          spinSpeed = max(abs(cmd.speed), 1); //abs shouold not be nessesary but just in case
           spinDirection = cmd.direction;
           isProportional = cmd.proportional;
           break;
@@ -40,7 +40,7 @@ void motorControlTask(void *pvParameters) {
           break;
         case SET_TIME:
           if(isSpinning){
-            setTime(cmd.hour, cmd.minute, spinSpeed, 1);
+            setTime(cmd.hour, cmd.minute, spinSpeed, 1, true);
             isSpinning = false;
             waitForReset = true;
           }else{
@@ -59,11 +59,11 @@ void motorControlTask(void *pvParameters) {
     else if (isMinAdvance) {
       advanceRealMin();
     }
-    taskYIELD();
+    taskYIELD(); //Feed the watchdog
   }
 }
 
-void pulseMotor(int pulPin, int speedMultiplier) {
+void pulseMotor(int pulPin, int speedMultiplier) { //A single pulse
   int delayTime = max(1000 / speedMultiplier, 10); //10 is min pulse delay creating the fastest speed
   digitalWrite(pulPin, HIGH);
   delayMicroseconds(5); // pulse width high
@@ -71,7 +71,7 @@ void pulseMotor(int pulPin, int speedMultiplier) {
   delayMicroseconds(delayTime);
 }
 
-void updatePos(bool isMinMotor, bool direction){
+void updatePos(bool isMinMotor, bool direction){ //logging each hand position
   if (isMinMotor) {
     if (direction) {
       CURRENT_MIN_STEPS = (CURRENT_MIN_STEPS + 1) % MIN_STEPS_PER_REV;
@@ -101,7 +101,7 @@ void spinMotor(bool isMinMotor, bool clockwise, int steps, int speedMultiplier) 
 void spinContinuous(int speed, bool clockwise, bool isProportional) {
   static int previousSpeed = 1;
   int currentSpeed = speed;
-  const int pulseBatchSize = 1200;  // Number of pulses to generate before yielding
+  const int pulseBatchSize = 1200;  // Number of pulses to generate before yielding, to avoid triggering the watchdog
   digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
   for (int step = 0; step < pulseBatchSize; ++step) {
     if (speed != previousSpeed) {
@@ -127,28 +127,22 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
   int totalSteps = max(minSteps, hrSteps);
   int rampUpSteps = totalSteps / 15;
   int rampDownSteps = totalSteps / 15;
-
   int minCounter = 0;
   int hrCounter = 0;
+  int step = 0;
 
   digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
 
-  int step = 0;
-
   while (step < totalSteps) {
-    if(!noRamp){
-      if (step < rampUpSteps) {
+    if (!noRamp && step < rampUpSteps) {
       currentSpeed = map(step, 0, rampUpSteps, 15, maxSpeedMultiplier);
-      } else if (step > totalSteps - rampDownSteps) {
-        currentSpeed = map(step, totalSteps - rampDownSteps, totalSteps, maxSpeedMultiplier, 15);
-      } else {
-        currentSpeed = maxSpeedMultiplier;
-      } 
-    }else {
+    } else if (step > totalSteps - rampDownSteps) {
+      currentSpeed = map(step, totalSteps - rampDownSteps, totalSteps, maxSpeedMultiplier, 0);
+    } else {
       currentSpeed = maxSpeedMultiplier;
-    }
+    } 
 
-    // Pulse the minute motor if necessary
+    // Pulse the minute motor
     if (minCounter < minSteps) {
       pulseMotor(PUL_PIN_MIN, currentSpeed);
       minCounter++;
@@ -156,21 +150,20 @@ void spinProportional(int minSteps, int hrSteps, bool clockwise, int maxSpeedMul
     }
 
     // Pulse the hour motor if necessary
-    if (hrCounter < hrSteps && minCounter % 12 == 0) {
+    if (hrCounter < hrSteps && minCounter % 16 == 0) { //Need to account for the ratio between the hour and min hands  12 (12:1 is the ratio of a clock) * 16000 (number of steps for min hand) / 12000 (number of steps for the hour hand) = 16
       pulseMotor(PUL_PIN_HR, currentSpeed);
       hrCounter++;
       updatePos(false, clockwise);
     }
-
     step++;
 
     if (step % 1200 == 0) {
-      taskYIELD();  // Yield control for a short time
+      taskYIELD();  // Feed the watchdog, yield control every 1200 steps, more frequenctly will cause jerky movement
     }
   }
 }
 
-void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultiplier) {
+void spinProportionalDuration(int durationMs, bool clockwise, int maxSpeedMultiplier) { //not used probably needs rework
   unsigned long startTime = millis();
   unsigned long endTime = startTime + durationMs;
   digitalWrite(DIR_PIN, clockwise ? LOW : HIGH);
@@ -229,10 +222,6 @@ int getCurrentHour() {
   return (hour == 0 ? 12 : hour);
 }
 
-// String getCurrentMin() {
-//   int minute = (CURRENT_MIN_STEPS % MIN_STEPS_PER_REV) / (MIN_STEPS_PER_REV / 60);
-//   return String(minute < 10 ? "0" : "") + String(minute);
-// }
 int getCurrentMin() {
   int min = (CURRENT_MIN_STEPS % MIN_STEPS_PER_REV) / (MIN_STEPS_PER_REV / 60);
   return min;
@@ -271,12 +260,36 @@ void moveToHome() {
   CURRENT_MIN_STEPS = 0;
 }
 
-void setTime(int hr, int min, int speed, int extraRevs) {
-  checkTime();
-  Serial.print("Current Step Pos: Hr:");
-  Serial.print(CURRENT_HR_STEPS);
-  Serial.print(" Min:");
-  Serial.println(CURRENT_MIN_STEPS);
+int calculateminDiff(int oldHour, int oldmin, int newHour, int newmin) {
+    Serial.print("Old Time: ");
+    Serial.print(oldHour);
+    Serial.print(":");
+    Serial.println(oldmin);
+    Serial.print("New Time: ");
+    Serial.print(newHour);
+    Serial.print(":");
+    Serial.println(newmin);
+    // Calculate the total mins for the old time and the new time.
+    int oldTotalmins = (oldHour % 12) * 60 + oldmin;
+    int newTotalmins = (newHour % 12) * 60 + newmin;
+    Serial.print("Old Total Mins: ");
+    Serial.println(oldTotalmins);
+    Serial.print("New Total Mins: ");
+    Serial.println(newTotalmins);
+
+    // Calculate the Diff in mins.
+    int minDiff = newTotalmins - oldTotalmins;
+
+    // Handle the wrap-around scenario for going forward in time (e.g., 11:45 to 1:15).
+    if (minDiff < 0) {
+        minDiff += 12 * 60;  // Wrap around the 12-hour clock.
+    }
+
+    return minDiff;
+}
+
+
+void setTime(int hr, int min, int speed, int extraRevs, bool noRamp) {
   Serial.print(" Setting time to ");
   Serial.print(hr);
   Serial.print(":");
@@ -284,13 +297,31 @@ void setTime(int hr, int min, int speed, int extraRevs) {
 
   int targetHrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);
   int targetMinSteps = map(min, 0, 60, 0, MIN_STEPS_PER_REV);
+  checkTime();
+  Serial.print("Target Step Pos: Hr:");
+  Serial.print(targetHrSteps);
+  Serial.print(" Min:");
+  Serial.println(targetMinSteps);
 
   int hrSteps = (targetHrSteps - CURRENT_HR_STEPS + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
   int minSteps = (targetMinSteps - CURRENT_MIN_STEPS + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
+  
 
-  int fullMinRevs = (hrSteps / (HR_STEPS_PER_REV / 12)) * MIN_STEPS_PER_REV;
-  minSteps += fullMinRevs;
+  int minsToAdvance = calculateminDiff(getCurrentHour(), getCurrentMin(), hr, min);
 
+  Serial.print("Mins to advance: ");
+  Serial.println(minsToAdvance);
+  if( minsToAdvance > 60){
+    int fullMinRevs = (minsToAdvance / 60) * MIN_STEPS_PER_REV; //Int division not floating point 75/60 = 1
+    minSteps += fullMinRevs;
+  }
+  // Make sure that if the hour hand is not supposed to change, it still moves slightly based on minute hand movement
+  if (hrSteps == 0 && minSteps > 0) {
+    // For every 1/12th of a revolution of the minute hand, move the hour hand 1 step
+    int proportionalHrSteps = (minSteps / MIN_STEPS_PER_REV) * (HR_STEPS_PER_REV / 16);//Need to account for the ratio between the hour and min hands  12 (12:1 is the ratio of a clock) * 16000 (number of steps for min hand) / 12000 (number of steps for the hour hand) = 16
+    hrSteps += proportionalHrSteps;
+  }
+  // Add extra revolutions if specified
   if(extraRevs > 0){
     hrSteps += HR_STEPS_PER_REV * extraRevs;
     minSteps += MIN_STEPS_PER_REV * extraRevs;
@@ -302,15 +333,8 @@ void setTime(int hr, int min, int speed, int extraRevs) {
   Serial.print(" Min: ");
   Serial.println(minSteps);
 
-  // Call spinProportional to move both hands
-  spinProportional(minSteps, hrSteps, true, abs(speed));
-
-  // Update the current step positions
-  CURRENT_HR_STEPS = targetHrSteps;
-  CURRENT_MIN_STEPS = targetMinSteps;
+  spinProportional(minSteps, hrSteps, true, abs(speed), noRamp);
 }
-
-
 
 void correctTimePos(int hr, int min) {
   int hrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);

@@ -11,21 +11,17 @@ QueueHandle_t motorCommandQueue;
 void setup() {
   Serial.begin(115200);
   Serial.println("Setup starting...");
-  delay(1000);
+  delay(1000); //Needed but I forgot why...
 
   pinMode(PUL_PIN_HR, OUTPUT);
   pinMode(PUL_PIN_MIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
 
-
   // Initialize LEDs
   initializeLEDs();
   initToHome();
-  Serial.println("Setup Complete");
 
   motorCommandQueue = xQueueCreate(10, sizeof(MotorCommand));
-
-
   dmx_driver_install(dmxPort, &config, personalities, 1);
   dmx_set_pin(dmxPort, TX_PIN, RX_PIN, RTS_PIN);
 
@@ -35,7 +31,7 @@ void setup() {
     "DMX Task", // Name of the task
     10000,      // Stack size in words
     NULL,       // Task input parameter
-    1,          // Priority of the task
+    10,          // Priority of the task
     NULL,       // Task handle
     0);         // Core where the task should run
 
@@ -44,11 +40,12 @@ void setup() {
     "Motor Control Task", // Name of the task
     10000,      // Stack size in words
     NULL,       // Task input parameter
-    20,          // Priority of the task
+    20,         // Priority of the task
     NULL,       // Task handle
-    1
-  );         // Core where the task should run
+    1           // Core where the task should run
+  );         
 
+  //Enable Serial Handler for debugging only, There is some bug inside that will trigger the watchdog 🤷🏻‍♂️
   // xTaskCreate(
   //   serialHandler, // Function to implement the task
   //   "Serial Handler", // Name of the task
@@ -57,6 +54,7 @@ void setup() {
   //   1,          // Priority of the task
   //   NULL
   // ); 
+  Serial.println("Setup Complete");
 }
 
 void loop() {
@@ -121,6 +119,6 @@ void serialHandler(void *pvParameters) {
         Serial.println("Unknown command.");
       }
     }
-    taskYIELD();
+    taskYIELD(); //Feed the watchdog
   }
 }

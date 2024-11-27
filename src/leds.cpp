@@ -4,31 +4,24 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_RGB + NEO_KHZ
 
 void initializeLEDs() {
   strip.begin();
-  strip.setBrightness(BRIGHTNESS);
+  strip.setBrightness(255);
   strip.show();
 }
 
-void setLEDColor(int red, int green, int blue) {
-  // Set the color of the LEDs only if the color is different from the current one
-  static int prevRed = -1, prevGreen = -1, prevBlue = -1;
+void setLEDColor(int intensity, int red, int green, int blue) {
+  static int prevInt = 0,prevRed = 0, prevGreen = 0, prevBlue = 0;
 
   // Only proceed if there's a change
-  if (red != prevRed || green != prevGreen || blue != prevBlue) {
+  if (intensity != prevInt || red != prevRed || green != prevGreen || blue != prevBlue) {
     for (int i = 0; i < NUM_LEDS; i++) {
       strip.setPixelColor(i, strip.Color(red, green, blue));
     }
-    strip.show(); // Commit the changes to the LED strip
-
     // Store the current values for the next check
     prevRed = red;
     prevGreen = green;
     prevBlue = blue;
+    prevInt = intensity;
   }
-}
-
-
-void setLEDIntensity(int intensity) {
-  // Set the overall intensity (brightness) of the LEDs
   strip.setBrightness(intensity);
   strip.show();
 }
@@ -40,36 +33,30 @@ void LEDTest() {
 
   // Flash RGB quickly
   for (int i = 0; i < 3; i++) {
-    setLEDColor(255, 0, 0); // Red
+    setLEDColor(255, 255, 0, 0); // Red
     delay(300);
 
-    setLEDColor(0, 255, 0); // Green
+    setLEDColor(255, 0, 255, 0); // Green
     delay(300);
 
-    setLEDColor(0, 0, 255); // Blue
+    setLEDColor(255, 0, 0, 255); // Blue
     delay(300);
   }
-  Serial.println("Max ehite 5s");
-
-  // All LEDs on max brightness for 5 seconds
-  setLEDColor(255, 255, 255); // White
-  setLEDIntensity(255);
+  Serial.println("Max White 5s"); // All LEDs on max brightness for 5 seconds
+  setLEDColor(255, 255, 255, 255); // White
   delay(5000);
 
-  Serial.println("RGB cycle 2s each");
-
-  // Cycle through RGB at 2 seconds each
-  setLEDColor(255, 0, 0); // Red
+  Serial.println("RGB cycle 2s each"); // Cycle through RGB at 2 seconds each
+  setLEDColor(255, 255, 0, 0); // Red
   delay(2000);
 
-  setLEDColor(0, 255, 0); // Green
+  setLEDColor(255, 0, 255, 0); // Green
   delay(2000);
 
-  setLEDColor(0, 0, 255); // Blue
+  setLEDColor(255, 0, 0, 255); // Blue
   delay(2000);
 
-  Serial.println("Rainbow effect 5s");
-  // Rainbow effect for 5 seconds
+  Serial.println("Rainbow effect 5s"); // Rainbow effect for 5 seconds
   unsigned long start = millis();
   while (millis() - start < 5000) {
     for (int i = 0; i < NUM_LEDS; i++) {

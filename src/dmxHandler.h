@@ -18,6 +18,7 @@ extern dmx_port_t dmxPort;
 extern dmx_config_t config;
 extern dmx_personality_t personalities[];
 
+// Function declarations
 void dmxHandler(void* pvParameters);
 void processDMXChannels();
 
@@ -44,7 +45,19 @@ void processDMXChannels();
 
     // Each mode uses at least 5 values, and 0 is always reserved for the idle/no-action state to ensure stability and prevent accidental switching.
 
-// Channel 2-3: Clock Position (16-bit Control)
+//Channel 2 : Set Time Speed
+
+    // 0: Default Speed (15)
+
+    // 1-255: Speed (1-100) — Changes how quickly the clock will move to the new time. Ignored if time is set while spinning.
+
+    // 1: Fastest
+
+    // 100: Default
+
+    // 255: Slowest
+
+// Channel 3-4: Clock Position (16-bit Control) — 5-minute intervals with 455 steps per interval
 
     // 0-454: 12:00
 
@@ -70,43 +83,14 @@ void processDMXChannels();
 
     // 5005-5459: 12:55
 
-    // 5460-5914: 1:00
+// Channel 5-8: RGB LED Control
 
-    // 5915-6369: 1:05
+    // Channel 5: LED Intensity Master 0-255: Controls the overall brightness of all LEDs (0 for off, 255 for max brightness).
 
-    // 6370-6824: 1:10
+    // Channel 6 (Red): 0-255 Red Led Intensity
 
-    // 6825-7279: 1:15
+    // Channel 7 (Green): 0-255 Green Led Intensity
 
-    // 7280-7734: 1:20
+    // Channel 8 (Blue): 0-255 Blue Led Intensity
 
-    // 7735-8189: 1:25
-
-    // 8190-8644: 1:30
-
-    // 8645-9099: 1:35
-
-    // 9100-9554: 1:40
-
-    // 9555-10009: 1:45
-
-    // 10010-10464: 1:50
-
-    // 10465-10919: 1:55
-
-    // Continue mapping similarly up to 65535 for the rest of the clock times.
-
-    // This channel setup provides precise control over both the hour and minute hands using a combined 16-bit range.
-
-// Channel 4-6: RGB LED Control
-
-    // Channel 4 (Red Intensity): 0-255 — Controls the intensity of the red color component.
-
-    // Channel 5 (Green Intensity): 0-255 — Controls the intensity of the green color component.
-
-    // Channel 6 (Blue Intensity): 0-255 — Controls the intensity of the blue color component.
-
-// Channel 7: LED Intensity Master
-
-    // 0-255: Controls the overall brightness of all LEDs (0 for off, 255 for max brightness).
 
