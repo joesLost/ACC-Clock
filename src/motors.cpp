@@ -336,13 +336,13 @@ void setTime(int hr, int min, int speed, int extraRevs, bool noRamp) {
   spinProportional(minSteps, hrSteps, true, abs(speed), noRamp);
 }
 
-void correctTimePos(int hr, int min) {
-  int hrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);
-  int minSteps = map(min, 0, 59, 0, MIN_STEPS_PER_REV);
-  CURRENT_HR_STEPS = hrSteps;
-  CURRENT_MIN_STEPS = minSteps;
-  moveToHome();
-}
+// void correctTimePos(int hr, int min) {
+//   int hrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);
+//   int minSteps = map(min, 0, 59, 0, MIN_STEPS_PER_REV);
+//   CURRENT_HR_STEPS = hrSteps;
+//   CURRENT_MIN_STEPS = minSteps;
+//   moveToHome();
+// }
 
 void spinTest() {
   Serial.println("Starting spin test");
