@@ -47,6 +47,9 @@ void motorControlTask(void *pvParameters) {
             setTime(cmd.hour, cmd.minute, max(cmd.speed, 10), 0);
           }
           break;
+        case SET_POSITION:
+          setPosition(cmd.hour, cmd.minute, spinSpeed, 1, true);
+          break;
         case MIN_ADVANCE:
           isSpinning = false;
           isMinAdvance = true;
@@ -336,6 +339,43 @@ void setTime(int hr, int min, int speed, int extraRevs, bool noRamp) {
   spinProportional(minSteps, hrSteps, true, abs(speed), noRamp);
 }
 
+void setPosition(int hr, int min, int speed, int extraRevs, bool noRamp) {
+  Serial.print(" Setting position to ");
+  Serial.print(hr);
+  Serial.print(":");
+  Serial.println(min);
+
+  int targetHrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);
+  int targetMinSteps = map(min, 0, 60, 0, MIN_STEPS_PER_REV);
+
+  checkTime();
+
+  Serial.print("Target Step Pos: Hr:");
+  Serial.print(targetHrSteps);
+  Serial.print(" Min:");
+  Serial.println(targetMinSteps);
+
+  int hrClockwise = (targetHrSteps - CURRENT_HR_STEPS + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
+  int hrCounterClockwise = (CURRENT_HR_STEPS - targetHrSteps + HR_STEPS_PER_REV) % HR_STEPS_PER_REV;
+
+  int minClockwise = (targetMinSteps - CURRENT_MIN_STEPS + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
+  int minCounterClockwise = (CURRENT_MIN_STEPS - targetMinSteps + MIN_STEPS_PER_REV) % MIN_STEPS_PER_REV;
+
+  bool hrDirection = hrClockwise <= hrCounterClockwise;
+  bool minDirection = minClockwise <= minCounterClockwise;
+
+  int hrSteps = min(hrClockwise, hrCounterClockwise);
+  int minSteps = min(minClockwise, minCounterClockwise);
+
+  Serial.println("Steps to target: ");
+  Serial.print("Hour: ");
+  Serial.print(hrSteps);
+  Serial.print(" Min: ");
+  Serial.println(minSteps);
+
+  spinMotor(false, hrDirection, hrSteps, abs(speed));
+  spinMotor(true, minDirection, minSteps, abs(speed));
+}
 // void correctTimePos(int hr, int min) {
 //   int hrSteps = map(hr, 0, 12, 0, HR_STEPS_PER_REV);
 //   int minSteps = map(min, 0, 59, 0, MIN_STEPS_PER_REV);

@@ -8,6 +8,7 @@ typedef enum {
   STOP_HANDS,
   MOVE_TO_HOME,
   SET_TIME,
+  SET_POSITION,
   MIN_ADVANCE,
 } MotorCommandType;
 
