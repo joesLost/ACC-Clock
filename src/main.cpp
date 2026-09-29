@@ -77,25 +77,26 @@ void serialHandler(void *pvParameters) {
         spinTest();
       } else if (command == "checkTime") {
         checkTime();
-      } else if (command.startsWith("correctTimePos")) {
-        int firstSpaceIndex = command.indexOf(' ');
-        int secondSpaceIndex = command.indexOf(' ', firstSpaceIndex + 1);
+      //Upon later review, I don't think this is needed, not sure what my original intent was.
+      // } else if (command.startsWith("correctTimePos")) {
+      //   int firstSpaceIndex = command.indexOf(' ');
+      //   int secondSpaceIndex = command.indexOf(' ', firstSpaceIndex + 1);
 
-        if (firstSpaceIndex != -1 && secondSpaceIndex != -1) {
-          String hourStr = command.substring(firstSpaceIndex + 1, secondSpaceIndex);
-          String minuteStr = command.substring(secondSpaceIndex + 1);
+      //   if (firstSpaceIndex != -1 && secondSpaceIndex != -1) {
+      //     String hourStr = command.substring(firstSpaceIndex + 1, secondSpaceIndex);
+      //     String minuteStr = command.substring(secondSpaceIndex + 1);
 
-          int hour = hourStr.toInt();
-          int minute = minuteStr.toInt();
+      //     int hour = hourStr.toInt();
+      //     int minute = minuteStr.toInt();
 
-          if (hour >= 1 && hour <= 12 && minute >= 0 && minute < 60) {
-            correctTimePos(hour, minute);
-          } else {
-            Serial.println("Invalid time. Please enter hour (1-12) and minute (0-59).");
-          }
-        } else {
-          Serial.println("Invalid command format. Use: correctTimePosition hour minute");
-        }
+      //     if (hour >= 1 && hour <= 12 && minute >= 0 && minute < 60) {
+      //       correctTimePos(hour, minute);
+      //     } else {
+      //       Serial.println("Invalid time. Please enter hour (1-12) and minute (0-59).");
+      //     }
+      //   } else {
+      //     Serial.println("Invalid command format. Use: correctTimePosition hour minute");
+      //   }
       } else if (command.startsWith("setTime")) {
         int firstSpaceIndex = command.indexOf(' ');
         int secondSpaceIndex = command.indexOf(' ', firstSpaceIndex + 1);
