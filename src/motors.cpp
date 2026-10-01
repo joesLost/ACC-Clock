@@ -7,18 +7,22 @@ volatile int CURRENT_MIN_STEPS = MIN_STEPS_PER_REV / 2; // Initial position is 3
 
 void motorControlTask(void *pvParameters) {
   MotorCommand cmd;
-  //Set updefaults
-  bool isSpinning = false;
-  bool isMinAdvance = false; 
+  //Set up defaults
   bool spinDirection = true; 
   bool isProportional = false;
+  bool isSpinning = false;
   bool waitForReset = false;
+  bool isMinAdvance = false; 
+  bool minAdvanceLatched = false;
   int spinSpeed = 15;
+
   while (true) {
     // Check if there is a new command in the queue
     if (xQueueReceive(motorCommandQueue, &cmd, 0) == pdPASS) {
       switch (cmd.type) {
         case SPIN_CONTINUOUS:
+          isMinAdvance = false;
+          minAdvanceLatched = false;
           if (!waitForReset){
             isSpinning = true;
           }
@@ -29,16 +33,21 @@ void motorControlTask(void *pvParameters) {
         case STOP_HANDS:
           isSpinning = false;
           isMinAdvance = false;
+          minAdvanceLatched = false;
           waitForReset = false;
           xQueueReset(motorCommandQueue);
           break;
         case MOVE_TO_HOME:
+          isMinAdvance = false;
+          minAdvanceLatched = false;
           if (!waitForReset){
             isSpinning = false;
             moveToHome();
           }
           break;
         case SET_TIME:
+          isMinAdvance = false;
+          minAdvanceLatched = false;
           if(isSpinning){
             setTime(cmd.hour, cmd.minute, spinSpeed, 1, true);
             isSpinning = false;
@@ -48,11 +57,16 @@ void motorControlTask(void *pvParameters) {
           }
           break;
         case SET_POSITION:
+          isMinAdvance = false;
+          minAdvanceLatched = false;
           setPosition(cmd.hour, cmd.minute, spinSpeed, 1, true);
           break;
         case MIN_ADVANCE:
           isSpinning = false;
-          isMinAdvance = true;
+          if (!minAdvanceLatched) {
+            isMinAdvance = !isMinAdvance;
+            minAdvanceLatched = true;
+          }
           break;
       }
     }

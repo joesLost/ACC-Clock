@@ -31,7 +31,7 @@ void processDMXChannels();
 
     // 0: No Action (idle state)
 
-    // 1-5: Real Minute Advance — Advances the time by one real minute.
+    // 1-5: Real Minute Advance — Starts advancing the time by one min every min.
 
     // 6-124: Spin Forward in Time — Hands continuously move forward, with 6 being the fastest and 124 the slowest speed.
 
