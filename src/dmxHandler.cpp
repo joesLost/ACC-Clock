@@ -11,7 +11,7 @@ unsigned long lastUpdate = 0;
 dmx_port_t dmxPort = 1;
 dmx_config_t config = DMX_CONFIG_DEFAULT;
 dmx_personality_t personalities[] = {
-  {6, "Default Personality"}
+  {8, "Default Personality"}
 };
 
 void dmxHandler(void *pvParameters) {
@@ -59,9 +59,10 @@ void processDMXChannels() {
       cmd.type = STOP_HANDS;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
+    case 1:
+      //Set position toggle
+      //With this set, channels 3-4 will make the clock travel to the set time via the shortrest path.
     case 2 ... 5:
-      // Real Minute Advance
-      //Not yet working
       cmd.type = MIN_ADVANCE;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
@@ -115,7 +116,7 @@ void processDMXChannels() {
       hour = (hour == 0) ? 12 : hour; // Convert 0 to 12
       int minute = (intervalIndex % 12) * 5; // Convert to 5-minute increments (0, 5, 10, ..., 55)
       if(not (hour == getCurrentHour() && minute == getCurrentMin())){
-        cmd.type = SET_TIME;
+        cmd.type = (data[1 + dmxAddress] == 1) ? SET_POSITION : SET_TIME; // Use SET_POSITION if the first channel is set to 1 otherwise use SET_TIME
         cmd.hour = hour;
         cmd.minute = minute;
         cmd.speed = setTimeSpeed;
