@@ -339,7 +339,7 @@ void setTime(int hr, int min, int speed, int extraRevs, bool noRamp) {
   spinProportional(minSteps, hrSteps, true, abs(speed), noRamp);
 }
 
-void setPosition(int hr, int min, int speed, int extraRevs, bool noRamp) {
+void setPosition(int hr, int min, int speed) {
   Serial.print(" Setting position to ");
   Serial.print(hr);
   Serial.print(":");
