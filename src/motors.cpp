@@ -59,7 +59,7 @@ void motorControlTask(void *pvParameters) {
         case SET_POSITION:
           isMinAdvance = false;
           minAdvanceLatched = false;
-          setPosition(cmd.hour, cmd.minute, spinSpeed, 1, true);
+          setPosition(cmd.hour, cmd.minute, max(cmd.speed, 10));
           break;
         case MIN_ADVANCE:
           isSpinning = false;
@@ -378,8 +378,8 @@ void setPosition(int hr, int min, int speed) {
   bool hrDirection = hrClockwise <= hrCounterClockwise;
   bool minDirection = minClockwise <= minCounterClockwise;
 
-  int hrSteps = min(hrClockwise, hrCounterClockwise);
-  int minSteps = min(minClockwise, minCounterClockwise);
+  int hrSteps = hrClockwise < hrCounterClockwise ? hrClockwise : hrCounterClockwise;
+  int minSteps = minClockwise < minCounterClockwise ? minClockwise : minCounterClockwise;
 
   Serial.println("Steps to target: ");
   Serial.print("Hour: ");

@@ -47,6 +47,7 @@ int getCurrentHour();
 int getCurrentMin() ;
 void moveToHome();
 void setTime(int hr, int min, int speed=15, int extraRevs=0, bool noRamp=false);
+void setPosition(int hr, int min, int speed);
 void checkTime();
 void correctTimePos(int hr, int min);
 void initToHome();
