@@ -10,6 +10,7 @@ typedef enum {
   SET_TIME,
   SET_POSITION,
   MIN_ADVANCE,
+  RTC_MODE
 } MotorCommandType;
 
 typedef struct {
@@ -54,6 +55,7 @@ void initToHome();
 void spinTest();
 void timeTest();
 void advanceRealMin();
+void SetClockToCurrentTime();
 
 
 #endif // MOTORS_H

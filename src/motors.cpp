@@ -68,6 +68,12 @@ void motorControlTask(void *pvParameters) {
             minAdvanceLatched = true;
           }
           break;
+        case RTC_MODE:
+          isMinAdvance = false;
+          minAdvanceLatched = false;
+          isSpinning = false;
+          SetClockToCurrentTime();
+          break;
       }
     }
     if (isSpinning) {
@@ -427,4 +433,23 @@ void advanceRealMin() {
       spinProportional(minSteps, hrSteps, true, 10);
       lastUpdateTime = currentTime;
   }
+}
+
+void SetClockToCurrentTime() {
+  // Get the current time from the RTC
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+
+  int currentHour = timeinfo.tm_hour % 12; // Convert to 12-hour format
+  int currentMinute = timeinfo.tm_min;
+
+  Serial.print("Setting clock to current time: ");
+  Serial.print(currentHour);
+  Serial.print(":");
+  Serial.println(currentMinute);
+
+  setTime(currentHour, currentMinute, 10); // Set the clock to the current time with a speed of 10
 }

@@ -89,8 +89,8 @@ void processDMXChannels() {
       break;
     case 250 ... 254:
       // Real Time Clock Mode
-      // Not yet working, need RTC functionality
-      //synchronizeRealTime();
+      cmd.type = RTC_MODE;
+      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
     case 255:
       // Reset to 12:00
