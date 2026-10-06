@@ -76,7 +76,7 @@ void processDMXChannels() {
   
   // Channel 1: Preset Clock Modes
   switch (data[1 + dmxAddress]) {
-    case 0 ... 5:
+    case 0 ... 5:]
       cmd.type = STOP_HANDS;
             if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
         xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
