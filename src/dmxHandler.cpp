@@ -52,47 +52,69 @@ void dmxHandler(void *pvParameters) {
 
 void processDMXChannels() {
   MotorCommand cmd;
-
+  
+  // Channel 2: setTime Speed (1-100) changes how quickly the clock will move to the new time
+  int setTimeSpeed = (data[2 + dmxAddress] == 0) ? 5 : map(data[2 + dmxAddress], 1, 255, 5, 100);
+  cmd.speed = setTimeSpeed;
+  
+  // Channel 3-4: Time position (16-bit control, 5-minute intervals with 455 steps per interval)
+  if (data[3 + dmxAddress] != 0 || data[4 + dmxAddress] != 0) {
+    // Combine Channel 3 (high byte) and Channel 4 (low byte) to form the 16-bit value
+    int combinedValue = (data[3 + dmxAddress] << 8) | data[4 + dmxAddress];
+    if(combinedValue > 0){
+      // Calculate the position within the 12-hour clock (each 5-minute interval corresponds to 455 values)
+      int intervalIndex = combinedValue / 455;
+      int hour = intervalIndex / 12;
+      hour = (hour == 0) ? 12 : hour; // Convert 0 to 12
+      int minute = (intervalIndex % 12) * 5; // Convert to 5-minute increments (0, 5, 10, ..., 55)
+      cmd.hour = hour;
+      cmd.minute = minute;
+    }
+  }
+  
   // Channel 1: Preset Clock Modes
   switch (data[1 + dmxAddress]) {
-    case 0:
+    case 0 ... 5:
       cmd.type = STOP_HANDS;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
-    case 1:
-      //Set position toggle
-      //With this set, channels 3-4 will make the clock travel to the set time via the shortrest path.
-    case 2 ... 5:
-      cmd.type = MIN_ADVANCE;
+    case 6 ... 10:
+      cmd.type = SET_TIME;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
-    case 6 ... 124:
+    case 11 ... 15:
+      //Set position toggle
+      cmd.type = SET_POSITION;
+      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      break;
+
+    case 16 ... 20:
       // Spin Forward in Time
       cmd.type = SPIN_CONTINUOUS;
-      cmd.speed = map(data[1 + dmxAddress], 6, 124, 100, 1);
+      //cmd.speed = map(data[1 + dmxAddress], 6, 124, 100, 1);
       cmd.direction = true;
       cmd.proportional = true;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
-    case 125 ... 129:
-      // Stop Hands
-      cmd.type = STOP_HANDS;
-      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
-      break;
-    case 130 ... 249:
+    case 21 ... 25:
       // Spin Backward in Time
       cmd.type = SPIN_CONTINUOUS;
-      cmd.speed = map(data[1 + dmxAddress], 130, 249, 1, 100);
+      //cmd.speed = map(data[1 + dmxAddress], 130, 249, 1, 100);
       cmd.direction = false;
       cmd.proportional = true;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
-    case 250 ... 254:
+    case 26 ... 30:
+      // Real Minute Advance
+      cmd.type = MIN_ADVANCE;
+      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      break;
+    case 31 ... 35:
       // Real Time Clock Mode
       cmd.type = RTC_MODE;
       xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
       break;
-    case 255:
+    case 36 ... 255:
       // Reset to 12:00
       cmd.type = MOVE_TO_HOME;
       if(not (getCurrentHour() == 12 && getCurrentMin() == 0)){
@@ -101,29 +123,6 @@ void processDMXChannels() {
       break;
   }
 
-  // Channel 2: setTime Speed (1-100) changes how quickly the clock will move to the new time Ignored if time is set while spinning
-  int setTimeSpeed = (data[2 + dmxAddress] == 0) ? 15 : map(data[2 + dmxAddress], 1, 255, 5, 100);
-
-  // Channel 3-4: Time position (16-bit control, 5-minute intervals with 455 steps per interval)
-  if (data[3 + dmxAddress] != 0 || data[4 + dmxAddress] != 0) {
-    // Combine Channel 3 (high byte) and Channel 4 (low byte) to form the 16-bit value
-    int combinedValue = (data[3 + dmxAddress] << 8) | data[4 + dmxAddress];
-    if(combinedValue > 0){
-      // Calculate the position within the 12-hour clock (each 5-minute interval corresponds to 455 values)
-      int intervalIndex = combinedValue / 455;
-
-      int hour = intervalIndex / 12;
-      hour = (hour == 0) ? 12 : hour; // Convert 0 to 12
-      int minute = (intervalIndex % 12) * 5; // Convert to 5-minute increments (0, 5, 10, ..., 55)
-      if(not (hour == getCurrentHour() && minute == getCurrentMin())){
-        cmd.type = (data[1 + dmxAddress] == 1) ? SET_POSITION : SET_TIME; // Use SET_POSITION if the first channel is set to 1 otherwise use SET_TIME
-        cmd.hour = hour;
-        cmd.minute = minute;
-        cmd.speed = setTimeSpeed;
-        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
-      }
-    }
-  }
 
   // Channel 5-8: LED Intensity, RGB Control
   int Intensity = data[5 + dmxAddress];
