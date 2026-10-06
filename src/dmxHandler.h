@@ -29,31 +29,30 @@ void processDMXChannels();
 
 // Channel 1: Preset Clock Modes
 
-    // 0: No Action (idle state)
+    // 0-5: Stop Hands — Stops all movement of clock hands.
 
-    // 1-5: Real Minute Advance — Starts advancing the time by one min every min.
+    // 6-10: Set time toggle — With this set, channels 3-4 will make the clock travel to the set time like a normal clock would. Speed is
 
-    // 6-124: Spin Forward in Time — Hands continuously move forward, with 6 being the fastest and 124 the slowest speed.
+    // 11-15: Set position toggle — With this set, channels 3-4 will make the clock travel to the set time via the shortest path.
+    
+    // 16-20: Spin Forward in Time — Hands continuously move forward, with the speed set via channel 2
+    
+    // 21-25: Spin Backward in Time — Hands continuously move backward, with 130 being the slowest and 249 the fastest speed.
 
-    // 125-129: Stop Hands — Stops all movement of clock hands.
+    // 26-30: Real Minute Advance — Starts advancing the time by one min every min.
 
-    // 130-249: Spin Backward in Time — Hands continuously move backward, with 130 being the slowest and 249 the fastest speed.
+    // 31-35: Real Time Clock Mode — Synchronizes with real-world time.
 
-    // 250-254: Real Time Clock Mode — Synchronizes with real-world time.
+    // 36-255: Reset to 12:00 — Resets the clock hands to the 12 o'clock position.
 
-    // 255: Reset to 12:00 — Resets the clock hands to the 12 o'clock position.
+//Channel 2 : Clock Speed — Changes how quickly the clock will move to the new time, or in spinning mode
 
-    // Each mode uses at least 5 values, and 0 is always reserved for the idle/no-action state to ensure stability and prevent accidental switching.
+    // 0: Default Speed (5)
 
-//Channel 2 : Set Time Speed
-
-    // 0: Default Speed (15)
-
-    // 1-255: Speed (1-100) — Changes how quickly the clock will move to the new time. Ignored if time is set while spinning.
-
+    // 1-255: Speed (1-100) 
     // 1: Fastest
 
-    // 100: Default
+    // 100: Medium..ist
 
     // 255: Slowest
 
@@ -82,6 +81,14 @@ void processDMXChannels();
     // 4550-5004: 12:50
 
     // 5005-5459: 12:55
+
+    // ...
+
+    // 32768-33222: 6:00
+
+    // ...
+
+    // 65080-65535: 11:55
 
 // Channel 5-8: RGB LED Control
 
