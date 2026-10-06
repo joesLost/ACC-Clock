@@ -148,7 +148,7 @@ void processDMXChannels() {
         hasLastCmd = true;
       }
       break;
-    case 36 ... 255:
+      case 36 ... 255:
       // Reset to 12:00
       cmd.type = MOVE_TO_HOME;
       if(not (getCurrentHour() == 12 && getCurrentMin() == 0)){
