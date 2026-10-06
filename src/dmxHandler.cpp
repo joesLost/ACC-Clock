@@ -77,6 +77,7 @@ void processDMXChannels() {
   // Channel 1: Preset Clock Modes
   switch (data[1 + dmxAddress]) {
     case 0 ... 5:
+    case 0 ... 5:
       cmd.type = STOP_HANDS;
             if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
         xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
@@ -109,6 +110,8 @@ void processDMXChannels() {
       break;
 
     case 16 ... 20:
+
+    case 16 ... 20:
       // Spin Forward in Time
       cmd.type = SPIN_CONTINUOUS;
       cmd.direction = true;
@@ -119,6 +122,7 @@ void processDMXChannels() {
         hasLastCmd = true;
       }
       break;
+    case 21 ... 25:
     case 21 ... 25:
       // Spin Backward in Time
       cmd.type = SPIN_CONTINUOUS;
@@ -148,6 +152,7 @@ void processDMXChannels() {
         hasLastCmd = true;
       }
       break;
+    case 36 ... 255:
     case 36 ... 255:
       // Reset to 12:00
       cmd.type = MOVE_TO_HOME;
