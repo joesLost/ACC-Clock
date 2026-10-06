@@ -21,6 +21,7 @@ extern dmx_personality_t personalities[];
 // Function declarations
 void dmxHandler(void* pvParameters);
 void processDMXChannels();
+bool isSameMotorCommand(const MotorCommand &a, const MotorCommand &b);
 
 #endif // DMXHANDLER_H
 

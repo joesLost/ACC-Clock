@@ -12,8 +12,7 @@ void motorControlTask(void *pvParameters) {
   bool isProportional = false;
   bool isSpinning = false;
   bool waitForReset = false;
-  bool isMinAdvance = false; 
-  bool minAdvanceLatched = false;
+  bool isMinAdvance = false;
   int spinSpeed = 15;
 
   while (true) {
@@ -22,7 +21,6 @@ void motorControlTask(void *pvParameters) {
       switch (cmd.type) {
         case SPIN_CONTINUOUS:
           isMinAdvance = false;
-          minAdvanceLatched = false;
           if (!waitForReset){
             isSpinning = true;
           }
@@ -33,13 +31,11 @@ void motorControlTask(void *pvParameters) {
         case STOP_HANDS:
           isSpinning = false;
           isMinAdvance = false;
-          minAdvanceLatched = false;
           waitForReset = false;
           xQueueReset(motorCommandQueue);
           break;
         case MOVE_TO_HOME:
           isMinAdvance = false;
-          minAdvanceLatched = false;
           if (!waitForReset){
             isSpinning = false;
             moveToHome();
@@ -47,7 +43,6 @@ void motorControlTask(void *pvParameters) {
           break;
         case SET_TIME:
           isMinAdvance = false;
-          minAdvanceLatched = false;
           if(isSpinning){
             setTime(cmd.hour, cmd.minute, spinSpeed, 1, true);
             isSpinning = false;
@@ -58,19 +53,14 @@ void motorControlTask(void *pvParameters) {
           break;
         case SET_POSITION:
           isMinAdvance = false;
-          minAdvanceLatched = false;
           setPosition(cmd.hour, cmd.minute, max(cmd.speed, 10));
           break;
         case MIN_ADVANCE:
           isSpinning = false;
-          if (!minAdvanceLatched) {
-            isMinAdvance = !isMinAdvance;
-            minAdvanceLatched = true;
-          }
+          isMinAdvance = true;
           break;
         case RTC_MODE:
           isMinAdvance = false;
-          minAdvanceLatched = false;
           isSpinning = false;
           SetClockToCurrentTime();
           break;

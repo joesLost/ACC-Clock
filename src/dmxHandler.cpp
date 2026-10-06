@@ -51,7 +51,9 @@ void dmxHandler(void *pvParameters) {
 }
 
 void processDMXChannels() {
-  MotorCommand cmd;
+  MotorCommand cmd = {};
+  static MotorCommand lastCmd = {};
+  static bool hasLastCmd = false;
   
   // Channel 2: setTime Speed (1-100) changes how quickly the clock will move to the new time
   int setTimeSpeed = map(data[2 + dmxAddress], 0, 255, 0, 100);
@@ -76,13 +78,21 @@ void processDMXChannels() {
   switch (data[1 + dmxAddress]) {
     case 0 ... 5:
       cmd.type = STOP_HANDS;
-      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+            if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        lastCmd = cmd;
+        hasLastCmd = true;
+      }
       break;
     case 6 ... 10:
       cmd.type = SET_TIME;
       cmd.speed = setTimeSpeed == 0 ? 5 : setTimeSpeed;
       if(not (cmd.hour == getCurrentHour() && cmd.minute == getCurrentMin())){
-        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+          xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+          lastCmd = cmd;
+          hasLastCmd = true;
+        }
       }
       break;
     case 11 ... 15:
@@ -90,7 +100,11 @@ void processDMXChannels() {
       cmd.type = SET_POSITION;
       cmd.speed = setTimeSpeed == 0 ? 5 : setTimeSpeed;
       if(not (cmd.hour == getCurrentHour() && cmd.minute == getCurrentMin())){
-        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+          xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+          lastCmd = cmd;
+          hasLastCmd = true;
+        }
       }
       break;
 
@@ -99,30 +113,50 @@ void processDMXChannels() {
       cmd.type = SPIN_CONTINUOUS;
       cmd.direction = true;
       cmd.proportional = true;
-      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        lastCmd = cmd;
+        hasLastCmd = true;
+      }
       break;
     case 21 ... 25:
       // Spin Backward in Time
       cmd.type = SPIN_CONTINUOUS;
       cmd.direction = false;
       cmd.proportional = true;
-      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        lastCmd = cmd;
+        hasLastCmd = true;
+      }
       break;
     case 26 ... 30:
       // Real Minute Advance
       cmd.type = MIN_ADVANCE;
-      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        lastCmd = cmd;
+        hasLastCmd = true;
+      }
       break;
     case 31 ... 35:
       // Real Time Clock Mode
       cmd.type = RTC_MODE;
-      xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+      if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        lastCmd = cmd;
+        hasLastCmd = true;
+      }
       break;
     case 36 ... 255:
       // Reset to 12:00
       cmd.type = MOVE_TO_HOME;
       if(not (getCurrentHour() == 12 && getCurrentMin() == 0)){
-        xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+        if (!hasLastCmd || !isSameMotorCommand(cmd, lastCmd)) {
+          xQueueSend(motorCommandQueue, &cmd, portMAX_DELAY);
+          lastCmd = cmd;
+          hasLastCmd = true;
+        }
       }
       break;
   }
@@ -134,4 +168,26 @@ void processDMXChannels() {
   int green = data[7 + dmxAddress];
   int blue = data[8 + dmxAddress];
   setLEDColor(Intensity, red, green, blue);
+}
+
+bool isSameMotorCommand(const MotorCommand &a, const MotorCommand &b) {
+  if (a.type != b.type) return false;
+
+  switch (a.type) {
+    case SET_TIME:
+    case SET_POSITION:
+      return a.hour == b.hour && a.minute == b.minute;
+
+    case SPIN_CONTINUOUS:
+      return a.speed == b.speed &&
+             a.direction == b.direction &&
+             a.proportional == b.proportional;
+
+    case MIN_ADVANCE:
+    case RTC_MODE:
+      return true;
+
+    default:
+      return true;
+  }
 }
